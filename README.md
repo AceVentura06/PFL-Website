@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/27937412/README.md)
 # PFL Website — Setup Guide
 
 ## File Structure

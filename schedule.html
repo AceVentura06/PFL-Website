@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PFL — Schedule</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .week-nav {
+      display: flex; align-items: center; gap: 16px;
+      margin-bottom: 28px;
+    }
+    .week-nav-btn {
+      background: var(--navy-light); border: 1px solid var(--border);
+      color: var(--white); font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px; font-weight: 600; letter-spacing: 1px;
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: background .2s, border-color .2s;
+    }
+    .week-nav-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .week-nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+    .week-label {
+      font-family: 'Oswald', sans-serif;
+      font-size: 20px; font-weight: 700; letter-spacing: 2px;
+      flex: 1;
+    }
+    .week-select {
+      background: var(--navy-light); border: 1px solid var(--border);
+      color: var(--white); font-family: 'Barlow Condensed', sans-serif;
+      font-size: 13px; padding: 8px 12px; border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .games-block { margin-bottom: 32px; }
+    .games-block-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--gold);
+      padding: 10px 16px; background: var(--navy-mid);
+      border-bottom: 1px solid var(--border);
+    }
+    .empty-week {
+      padding: 48px; text-align: center;
+      color: var(--muted); font-size: 15px;
+    }
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+    .filter-btn {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; padding: 6px 14px;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: transparent; color: var(--muted); cursor: pointer; transition: all .2s;
+    }
+    .filter-btn:hover, .filter-btn.active { background: var(--gold-pale); color: var(--gold); border-color: var(--gold); }
+  </style>
+</head>
+<body>
+
+<div id="nav"></div>
+<div id="ticker"></div>
+
+<section class="page-banner">
+  <div class="container">
+    <div class="page-banner-title"><em>Schedule</em></div>
+    <div class="page-banner-sub" id="schedule-banner-sub">Season 2025</div>
+  </div>
+</section>
+
+<main class="container page-content">
+
+  <!-- WEEK NAV -->
+  <div class="week-nav">
+    <button class="week-nav-btn" id="prev-week" onclick="changeWeek(-1)">← Prev</button>
+    <div class="week-label" id="week-label">Week 1</div>
+    <select class="week-select" id="week-select" onchange="jumpToWeek(this.value)"></select>
+    <button class="week-nav-btn" id="next-week" onclick="changeWeek(1)">Next →</button>
+  </div>
+
+  <!-- STATUS FILTER -->
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setStatusFilter('all', this)">All Games</button>
+    <button class="filter-btn" onclick="setStatusFilter('final', this)">Final</button>
+    <button class="filter-btn" onclick="setStatusFilter('live', this)">Live</button>
+    <button class="filter-btn" onclick="setStatusFilter('upcoming', this)">Upcoming</button>
+  </div>
+
+  <div id="schedule-body"></div>
+
+</main>
+
+<footer id="footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/pfl.js"></script>
+<script>
+  pflInit('schedule');
+
+  let displayWeek = PFL.currentWeek;
+  let statusFilter = 'all';
+  const totalWeeks = 18;
+
+  document.getElementById('schedule-banner-sub').textContent = `Season ${PFL.currentSeason}`;
+
+  // Build week selector dropdown
+  const sel = document.getElementById('week-select');
+  for (let w = 1; w <= totalWeeks; w++) {
+    sel.innerHTML += `<option value="${w}" ${w===displayWeek?'selected':''}>Week ${w}</option>`;
+  }
+
+  function changeWeek(dir) {
+    displayWeek = Math.max(1, Math.min(totalWeeks, displayWeek + dir));
+    document.getElementById('week-select').value = displayWeek;
+    render();
+  }
+
+  function jumpToWeek(w) {
+    displayWeek = parseInt(w);
+    render();
+  }
+
+  function setStatusFilter(f, btn) {
+    statusFilter = f;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  }
+
+  function render() {
+    document.getElementById('week-label').textContent = `Week ${displayWeek}`;
+    document.getElementById('prev-week').disabled = displayWeek <= 1;
+    document.getElementById('next-week').disabled = displayWeek >= totalWeeks;
+
+    let games = PFL.schedule.filter(g => g.week === displayWeek);
+    if (statusFilter !== 'all') games = games.filter(g => g.status === statusFilter);
+
+    const el = document.getElementById('schedule-body');
+    if (games.length === 0) {
+      el.innerHTML = `<div class="card empty-week">No games found for Week ${displayWeek}${statusFilter !== 'all' ? ` (${statusFilter})` : ''}.<br><span style="font-size:13px;margin-top:8px;display:block;">Add games to the schedule array in data.js</span></div>`;
+      return;
+    }
+
+    // Group by status
+    const groups = { live: [], final: [], upcoming: [] };
+    games.forEach(g => groups[g.status]?.push(g));
+
+    let html = '';
+    if (groups.live.length) {
+      html += `<div class="games-block card" style="overflow:hidden"><div class="games-block-label">● Live Now</div>${groups.live.map(renderGameRow).join('')}</div>`;
+    }
+    if (groups.upcoming.length) {
+      html += `<div class="games-block card" style="overflow:hidden"><div class="games-block-label">Upcoming</div>${groups.upcoming.map(renderGameRow).join('')}</div>`;
+    }
+    if (groups.final.length) {
+      html += `<div class="games-block card" style="overflow:hidden"><div class="games-block-label">Final</div>${groups.final.map(renderGameRow).join('')}</div>`;
+    }
+
+    el.innerHTML = html;
+  }
+
+  render();
+</script>
+</body>
+</html>

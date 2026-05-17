@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PFL — Teams</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .conf-section { margin-bottom: 48px; }
+    .conf-header {
+      font-family: 'Oswald', sans-serif;
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 6px;
+    }
+    .div-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--muted);
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      margin-bottom: 12px; margin-top: 24px;
+    }
+    .teams-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .team-card {
+      background: var(--navy-light);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .2s, border-color .2s;
+      text-decoration: none; color: inherit;
+      display: block;
+    }
+    .team-card:hover { transform: translateY(-3px); }
+    .team-card-bar { height: 3px; }
+    .team-card-banner {
+      height: 80px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .team-card-body { padding: 12px 14px 14px; }
+    .team-card-id {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .team-card-name {
+      font-family: 'Oswald', sans-serif;
+      font-size: 17px; font-weight: 600;
+      color: var(--white); line-height: 1.15;
+    }
+    .team-card-record {
+      font-size: 12px; color: var(--muted);
+      margin-top: 8px; padding-top: 8px;
+      border-top: 1px solid var(--border-sub);
+      display: flex; justify-content: space-between;
+    }
+
+    /* filter bar */
+    .filter-bar {
+      display: flex; gap: 8px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .filter-btn {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; padding: 7px 16px;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: transparent; color: var(--muted);
+      cursor: pointer; transition: all .2s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--gold-pale); color: var(--gold);
+      border-color: var(--gold);
+    }
+  </style>
+</head>
+<body>
+
+<div id="nav"></div>
+<div id="ticker"></div>
+
+<section class="page-banner">
+  <div class="container">
+    <div class="page-banner-title">All <em>32</em> Teams</div>
+    <div class="page-banner-sub">AFC · NFC · 8 Divisions</div>
+  </div>
+</section>
+
+<main class="container page-content">
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="filterTeams('all', this)">All Teams</button>
+    <button class="filter-btn" onclick="filterTeams('AFC', this)">AFC</button>
+    <button class="filter-btn" onclick="filterTeams('NFC', this)">NFC</button>
+    <button class="filter-btn" onclick="filterTeams('AFC-North', this)">AFC North</button>
+    <button class="filter-btn" onclick="filterTeams('AFC-South', this)">AFC South</button>
+    <button class="filter-btn" onclick="filterTeams('AFC-East', this)">AFC East</button>
+    <button class="filter-btn" onclick="filterTeams('AFC-West', this)">AFC West</button>
+    <button class="filter-btn" onclick="filterTeams('NFC-North', this)">NFC North</button>
+    <button class="filter-btn" onclick="filterTeams('NFC-South', this)">NFC South</button>
+    <button class="filter-btn" onclick="filterTeams('NFC-East', this)">NFC East</button>
+    <button class="filter-btn" onclick="filterTeams('NFC-West', this)">NFC West</button>
+  </div>
+
+  <!-- TEAMS GRID — built by JS -->
+  <div id="teams-container"></div>
+
+</main>
+
+<footer id="footer"></footer>
+
+<script src="js/data.js"></script>
+<script src="js/pfl.js"></script>
+<script>
+  pflInit('teams');
+
+  function teamCard(t) {
+    return `
+      <a href="teams/${t.id.toLowerCase()}.html" class="team-card"
+         style="border-color:rgba(0,0,0,0)"
+         onmouseover="this.style.borderColor='${t.primary}'"
+         onmouseout="this.style.borderColor='transparent'">
+        <div class="team-card-bar" style="background:linear-gradient(90deg,${t.primary},${t.secondary})"></div>
+        <div class="team-card-banner" style="background:linear-gradient(135deg,${t.primary}22,${t.primary}44)">
+          ${teamCircle(t, 52)}
+        </div>
+        <div class="team-card-body">
+          <div class="team-card-id" style="color:${t.primary}">${t.id} · ${t.conf} ${t.div}</div>
+          <div class="team-card-name">${t.city}<br>${t.name}</div>
+          <div class="team-card-record">
+            <span>${t.w}–${t.l}</span>
+            <span>${PFL.pct(t)}</span>
+          </div>
+        </div>
+      </a>`;
+  }
+
+  function buildTeams(filter) {
+    const confs = ['AFC', 'NFC'];
+    const divs  = ['North', 'South', 'East', 'West'];
+    let html = '';
+
+    confs.forEach(conf => {
+      if (filter !== 'all' && filter !== conf && !filter.startsWith(conf)) return;
+      html += `<div class="conf-section"><div class="conf-header">${conf}</div>`;
+      divs.forEach(div => {
+        const key = `${conf}-${div}`;
+        if (filter !== 'all' && filter !== conf && filter !== key) return;
+        const teams = PFL.getSortedDiv(conf, div);
+        html += `<div class="div-label">${conf} ${div}</div><div class="teams-grid">`;
+        html += teams.map(teamCard).join('');
+        html += `</div>`;
+      });
+      html += `</div>`;
+    });
+
+    document.getElementById('teams-container').innerHTML = html;
+  }
+
+  function filterTeams(filter, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    buildTeams(filter);
+  }
+
+  buildTeams('all');
+</script>
+</body>
+</html>
